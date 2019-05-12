@@ -10,40 +10,40 @@ import time
 import cv2
 import pprint
 from secrets import randbelow
+from collections import deque
 import random
 import _pickle
 import os
 
+from memory_db import MemeryDB
 from nes_io import IO
 from agent import Agent
 from preprocess_exprience import calculate_rewards
 from train_model import train_with_experience, sample_distribution
 discount = 0.7
 
-sample_size = 32
-epoch = 50
+sample_size = 350
+epoch = 200
+
 training_before_update_target = 10
 esplison = 0.6
 esplison_decay = 0.01
-
+maxlen = 1000
 #sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
 def main():
     esplison = 0.6
     io_instance = IO("FCEUX 2.2.3: mario")
     io_instance.reset()
-
+    memorydb_instance = MemeryDB('localhost', 'mario-ai', 'replay-memory')
     agent_instance = Agent((100, 150, 4), True)
 
-    experiences = []
-    if os.path.exists("experiences_collection"):
-        with open('./experiences_collection', 'rb') as pickle_file:
-            print("existing experiences loaded")
+    # sampled_experiences = memorydb_instance.get_sampled_experiences(sample_size)
+    # print(sampled_experiences[0])
 
-            experiences = _pickle.load(pickle_file, encoding='latin1')
     i = 1
     while True:
-        print(f"experiences size: {len(experiences)}")
+        print(f"experiences size: {memorydb_instance.get_experiences_size()}")
         experience_bacth = []
         io_instance.focus_window()
         io_instance.reset()
@@ -61,15 +61,16 @@ def main():
 
             dice = random.uniform(0.0, 1.0)
             action_index = 0
-
-            if dice >= esplison:
+            #if dice >= esplison:
+            if True:
                 reward = agent_instance.model_predict([experience["image_state"].reshape(
                     1, 100, 150, 4), experience["device_state"].reshape(1, 4)])
-                action_index = np.argmax(reward)
-                print("Model selected action and rewards:", action_index, reward)
+                action_index = np.argmax(reward).item()
+                print("Model selected action and rewards:", action_index,  io_instance.action_mapping_name[action_index], reward)
             else:
                 action_index = random.randint(0, 3)
-                print("Random selected action:", action_index)
+
+                print("Random selected action:", action_index, io_instance.action_mapping_name[action_index])
             io_instance.action(action_index)
 
             experience["action_index"] = action_index
@@ -84,15 +85,14 @@ def main():
                 is_termnial = True
 
         calculate_rewards(experience_bacth)
-
-        experiences += experience_bacth
-        _pickle.dump(experiences, open('experiences_collection', 'wb'))
+        memorydb_instance.save_experiences(experience_bacth)
         print("Experiences updated")
-        # train_with_experience(agent_instance, experience_bacth, sample_size, epoch, discount)
-        train_with_experience(agent_instance, experiences,
+        sampled_experiences = memorydb_instance.get_sampled_experiences(1000)
+        # train_with_experienpce(agent_instance, experience_bacth, sample_size, epoch, discount)
+        train_with_experience(agent_instance, sample_distribution(sampled_experiences),
                               sample_size, epoch, discount)
+        print(sampled_experiences[0])
         agent_instance.save_model()
-
         esplison -= esplison_decay
 
         if i % training_before_update_target == 0:

@@ -54,7 +54,8 @@ class DQN:
         merged_output = tf.keras.layers.concatenate(
             [image_output, device_output])
 
-        final_output = tf.keras.layers.Dense(4)(merged_output)
+        final_output = tf.keras.layers.Dense(4, kernel_initializer='random_uniform',
+                                             bias_initializer='zeros')(merged_output)
 
         model = tf.keras.Model(
             inputs=[image_input, device_input], outputs=final_output)

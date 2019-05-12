@@ -22,12 +22,11 @@ def calculate_reward(input_data1, input_data2):
 
     score1 = 0
     score2 = 0
-
     try:
         score1 = int(pytesseract.image_to_string(thresh1, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789'))
         score2 = int(pytesseract.image_to_string(thresh2, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789'))
     except:
-        print("No score")
+        print("bad scores")
 
     print(score1, score2, score2 - score1)
     res = cv2.matchTemplate(input_data1,input_data2[:, 0:80],method)

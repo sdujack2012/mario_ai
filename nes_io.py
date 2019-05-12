@@ -28,6 +28,7 @@ class IO:
     def __init__(self, window_name):
         self.window = win32gui.FindWindow(None, window_name)
         self.action_mapping = [0x41, 0x44, 0x48, 0x53]
+        self.action_mapping_name = ['Jump', 'Right', 'Right', 'Fire']
         self.dead_mario = np.array(cv2.imread('./resources/dead_mario.png', 0))
         self.blackout = np.array(cv2.imread('./resources/blackout.png', 0))
         self.pressed_key = np.array([0, 0, 0, 0])

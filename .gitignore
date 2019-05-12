@@ -4,3 +4,4 @@ weights.hdf5
 experiences_collection
 checkpoint.hdf5
 temp_XX_XX_XX.hdf5
+model.hdf5

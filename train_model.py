@@ -15,13 +15,13 @@ import random
 import _pickle
 
 dead_experience_filter = {
-    "filter_by_reward": lambda x: x["actual_reward"] == -100, "size": 10}
+    "filter_by_reward": lambda x: x["actual_reward"] == -100, "size": 50}
 ideal_experience_filter = {
-    "filter_by_reward": lambda x: x["actual_reward"] == -10, "size": 15}
+    "filter_by_reward": lambda x: x["actual_reward"] == -10, "size": 150}
 good_moves_experience_filter = {
-    "filter_by_reward": lambda x: x["actual_reward"] > 80, "size": 15}
+    "filter_by_reward": lambda x: x["actual_reward"] > 80, "size": 50}
 progress_experience_filter = {
-    "filter_by_reward": lambda x: -10 < x["actual_reward"] < 80, "size": 20}
+    "filter_by_reward": lambda x: -10 < x["actual_reward"] < 80, "size": 100}
 
 
 def sample_distribution(experiences):
