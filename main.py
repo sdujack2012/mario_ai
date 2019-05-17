@@ -15,31 +15,28 @@ import random
 import _pickle
 import os
 
-from memory_db import MemeryDB
+from memory_db import MemoryDB
 from nes_io import IO
 from agent import Agent
 from preprocess_exprience import calculate_rewards
-from train_model import train_with_experience, sample_distribution
+from train_model import train_with_experience
 discount = 0.7
 
-sample_size = 350
-epoch = 200
+sample_size = 32
+epoch = 1
+
 
 training_before_update_target = 10
 esplison = 0.6
-esplison_decay = 0.01
+esplison_decay = 0.001
 maxlen = 1000
-#sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+
 
 def main():
     esplison = 0.6
     io_instance = IO("FCEUX 2.2.3: mario")
-    io_instance.reset()
-    memorydb_instance = MemeryDB('localhost', 'mario-ai', 'replay-memory')
-    agent_instance = Agent((100, 150, 4), True)
-
-    # sampled_experiences = memorydb_instance.get_sampled_experiences(sample_size)
-    # print(sampled_experiences[0])
+    memorydb_instance = MemoryDB('localhost', 'mario-ai', 'replay-memory')
+    agent_instance = Agent((50, 75, 4), False)
 
     i = 1
     while True:
@@ -48,36 +45,46 @@ def main():
         io_instance.focus_window()
         io_instance.reset()
         is_termnial = False
-        is_new_episode = True
+
+        previous_screenshot = io_instance.get_screenshot()
+        previous_device_state = io_instance.get_device_state()
+        previous_image_state = io_instance.get_stacked_frames(
+            previous_screenshot, True)
 
         while is_termnial != True:
             experience = {}
             experience["terminal"] = False
-            experience["screenshot"] = io_instance.get_screenshot()
-            experience["image_state"] = io_instance.get_stacked_frames(
-                experience["screenshot"], is_new_episode)
-            experience["device_state"] = io_instance.get_device_state()
-            is_new_episode = False
+            experience["screenshot"] = previous_screenshot
+            experience["image_state"] = previous_image_state
+            experience["device_state"] = previous_device_state
 
             dice = random.uniform(0.0, 1.0)
             action_index = 0
-            #if dice >= esplison:
-            if True:
+            if dice >= esplison:
+            #if True:
                 reward = agent_instance.model_predict([experience["image_state"].reshape(
-                    1, 100, 150, 4), experience["device_state"].reshape(1, 4)])
+                    1, 50, 75, 4), experience["device_state"].reshape(1, 4)])
+                 
+                # reward = output[0]
+                # print("###value: ", output[2]) 
+                # print("###advantage: ", output[1]) 
+                print("###reward: ", reward) 
                 action_index = np.argmax(reward).item()
-                print("Model selected action and rewards:", action_index,  io_instance.action_mapping_name[action_index], reward)
+                print("Model selected action and rewards:", action_index,
+                      io_instance.action_mapping_name[action_index])
             else:
                 action_index = random.randint(0, 3)
 
-                print("Random selected action:", action_index, io_instance.action_mapping_name[action_index])
+                print("Random selected action:", action_index,
+                      io_instance.action_mapping_name[action_index])
             io_instance.action(action_index)
 
             experience["action_index"] = action_index
-            experience["next_screenshot"] = io_instance.get_screenshot()
-            experience["next_image_state"] = io_instance.get_stacked_frames(
-                experience["next_screenshot"], is_new_episode)
-            experience["next_device_state"] = io_instance.get_device_state()
+
+            experience["next_screenshot"] = previous_screenshot = io_instance.get_screenshot()
+            experience["next_image_state"] = previous_image_state = io_instance.get_stacked_frames(
+                previous_screenshot, False)
+            experience["next_device_state"] = previous_device_state = io_instance.get_device_state()
             experience_bacth.append(experience)
 
             if io_instance.is_termnial(experience["next_screenshot"]):
@@ -85,14 +92,19 @@ def main():
                 is_termnial = True
 
         calculate_rewards(experience_bacth)
-        memorydb_instance.save_experiences(experience_bacth)
+        memorydb_instance.add_batch(experience_bacth)
         print("Experiences updated")
-        sampled_experiences = memorydb_instance.get_sampled_experiences(1000)
-        # train_with_experienpce(agent_instance, experience_bacth, sample_size, epoch, discount)
-        train_with_experience(agent_instance, sample_distribution(sampled_experiences),
-                              sample_size, epoch, discount)
-        print(sampled_experiences[0])
+
+        sampled_experiences, b_idx, b_ISWeights = memorydb_instance.sample(
+            sample_size)
+        print("sampled_experiences: ", len(sampled_experiences))
+        
+        errors = train_with_experience(
+            agent_instance, sampled_experiences, b_ISWeights, sample_size, epoch, discount)
+
         agent_instance.save_model()
+        memorydb_instance.update_batch(b_idx, errors, sampled_experiences)
+       
         esplison -= esplison_decay
 
         if i % training_before_update_target == 0:

@@ -16,19 +16,22 @@ P = 0x50
 Enter = 0x0D
 top_cutoff = 70
 frames_to_take = 4
-time_per_frame = 1/15
+time_per_frame = 1/10
 
 stack_size = 4  # We stack 4 frames
-frame_size = (150, 100)
+frame_size = (75, 50)
 screenshot_size = (224, 256)
 # Initialize deque with zero-images one array for each image
-
+A = 0x41
+S = 0x53
+D = 0x44 
+H = 0x48
 
 class IO:
     def __init__(self, window_name):
         self.window = win32gui.FindWindow(None, window_name)
-        self.action_mapping = [0x41, 0x44, 0x48, 0x53]
-        self.action_mapping_name = ['Jump', 'Right', 'Right', 'Fire']
+        self.action_mapping = [A, S, D, H]
+        self.action_mapping_name = ['Jump', 'Fire', 'Left', 'Right']
         self.dead_mario = np.array(cv2.imread('./resources/dead_mario.png', 0))
         self.blackout = np.array(cv2.imread('./resources/blackout.png', 0))
         self.pressed_key = np.array([0, 0, 0, 0])
@@ -47,8 +50,15 @@ class IO:
             win32api.keybd_event(
                 self.action_mapping[actionIndex], 0, win32con.KEYEVENTF_KEYUP, 0)
         else:
+            if actionIndex == 2 or actionIndex == 3:
+                key_to_release = 2 if actionIndex == 3 else 2
+                if self.pressed_key[key_to_release] == 1:
+                    win32api.keybd_event(self.action_mapping[key_to_release], 0, win32con.KEYEVENTF_KEYUP, 0)
+                    self.pressed_key[key_to_release] = 0
             win32api.keybd_event(self.action_mapping[actionIndex], 0, 0, 0)
+                 
         self.pressed_key[actionIndex] = 1 - self.pressed_key[actionIndex]
+
         time.sleep(time_per_frame)
 
     def reset(self):
@@ -81,13 +91,13 @@ class IO:
         resized_screenshot = croped_screenshot.resize(
             frame_size, Image.BICUBIC)
         normalized_screenshot = np.asarray(
-            resized_screenshot).reshape(100, 150) / 255.0
+            resized_screenshot).reshape(50, 75) / 255.0
         return normalized_screenshot
 
     def get_stacked_frames(self, screenshot, is_new_episode):
         # Preprocess frame
         frame = self.process_screenshot(screenshot)
-
+        
         if is_new_episode:
             # Clear our stacked_frames
             self.stacked_frames = deque(
@@ -103,6 +113,7 @@ class IO:
 
             # Build the stacked state (first dimension specifies different frames)
         stacked_state = np.stack(self.stacked_frames, axis=2)
+        print("#################", stacked_state.shape)
         return stacked_state
 
     def get_device_state(self):

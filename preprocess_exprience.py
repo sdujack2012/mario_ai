@@ -13,7 +13,6 @@ death_penalty = -100
 do_nothing_penalty = -10
 
 def calculate_reward(input_data1, input_data2):  
-    method = eval('cv2.TM_CCOEFF_NORMED')
     ret,thresh1 = cv2.threshold(input_data1[16:24, 23:72],240,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     ret,thresh2 = cv2.threshold(input_data2[16:24, 23:72],240,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
@@ -29,7 +28,8 @@ def calculate_reward(input_data1, input_data2):
         print("bad scores")
 
     print(score1, score2, score2 - score1)
-    res = cv2.matchTemplate(input_data1,input_data2[:, 0:80],method)
+    method = eval('cv2.TM_CCOEFF_NORMED')
+    res = cv2.matchTemplate(input_data1,input_data2[24:, 0:80],method)
     min_val, max_value, min_loc, max_loc = cv2.minMaxLoc(res)
     print("#### rewards", max_loc, max_value)
     final_reward = score2 - score1 + max_loc[0]
@@ -42,7 +42,7 @@ def calculate_reward_array(experience):
         print("#### death rewards", death_penalty)
         return death_penalty
     else:
-        return calculate_reward(experience["screenshot"], np.array(experience["next_screenshot"]))
+        return calculate_reward(experience["screenshot"], experience["next_screenshot"])
 
 def calculate_rewards(experiences):
     pool = ThreadPool(10) 

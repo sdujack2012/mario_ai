@@ -16,8 +16,8 @@ class Agent:
         def target_predict(self, input):
             return self.target.predict(input)  
 
-        def train_model(self, x_train, y_train, epochs):
-            self.model.train(x_train,y_train,epochs)
+        def train_model(self, x_train, y_train, sample_weight, epochs):
+            return self.model.train(x_train,y_train, sample_weight, epochs)
 
         def save_model(self):
             self.model.save_model()
