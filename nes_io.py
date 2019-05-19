@@ -9,6 +9,7 @@ import time
 import os
 import cv2
 import PIL.ImageGrab
+from preprocess_exprience import detect_1000
 from collections import deque
 from PIL import Image
 
@@ -16,30 +17,40 @@ P = 0x50
 Enter = 0x0D
 top_cutoff = 70
 frames_to_take = 4
-time_per_frame = 1/10
+time_per_frame = 1/15
 
 stack_size = 4  # We stack 4 frames
-frame_size = (75, 50)
+frame_size = (100, 150)
 screenshot_size = (224, 256)
 # Initialize deque with zero-images one array for each image
 A = 0x41
 S = 0x53
-D = 0x44 
+D = 0x44
 H = 0x48
+B = 0x42
+max_occurence_last_two_screens_same = 20
+
+
+def image_difference(image1, image2):
+    dif = np.sum(np.sum(np.abs(p1-p2) for p1, p2 in zip(image1, image2)))
+    return (dif / 255.0 * 100) / image1.size
+
 
 class IO:
     def __init__(self, window_name):
         self.window = win32gui.FindWindow(None, window_name)
-        self.action_mapping = [A, S, D, H]
-        self.action_mapping_name = ['Jump', 'Fire', 'Left', 'Right']
+        self.action_mapping = [A, S, D, H, B]
+        self.action_mapping_name = ['Jump', 'Fire', 'Left', 'Right', 'Nothing']
         self.dead_mario = np.array(cv2.imread('./resources/dead_mario.png', 0))
         self.blackout = np.array(cv2.imread('./resources/blackout.png', 0))
-        self.pressed_key = np.array([0, 0, 0, 0])
+        self.pressed_key = np.array([0, 0, 0, 0, 0])
 
         self.stacked_frames = deque([np.zeros(frame_size)
                                      for i in range(stack_size)], maxlen=4)
 
-        self.last_screenshots = []
+        self.last_two_screens = deque([np.zeros((16, 32))
+                                       for i in range(2)], maxlen=2)
+        self.occurence_last_two_screens_same = 0
         self.i = 1
 
     def focus_window(self):
@@ -53,10 +64,11 @@ class IO:
             if actionIndex == 2 or actionIndex == 3:
                 key_to_release = 2 if actionIndex == 3 else 2
                 if self.pressed_key[key_to_release] == 1:
-                    win32api.keybd_event(self.action_mapping[key_to_release], 0, win32con.KEYEVENTF_KEYUP, 0)
+                    win32api.keybd_event(
+                        self.action_mapping[key_to_release], 0, win32con.KEYEVENTF_KEYUP, 0)
                     self.pressed_key[key_to_release] = 0
             win32api.keybd_event(self.action_mapping[actionIndex], 0, 0, 0)
-                 
+
         self.pressed_key[actionIndex] = 1 - self.pressed_key[actionIndex]
 
         time.sleep(time_per_frame)
@@ -65,6 +77,10 @@ class IO:
         for action in self.action_mapping:
             win32api.keybd_event(action, 0, win32con.KEYEVENTF_KEYUP, 0)
         self.pressed_key[...] = 0
+        self.occurence_last_two_screens_same = 0
+        self.last_two_screens = deque([np.zeros((16, 32))
+                                       for i in range(2)], maxlen=2)
+
         time.sleep(0.5)
         win32api.keybd_event(P, 0, 0, 0)
         time.sleep(0.3)
@@ -82,6 +98,7 @@ class IO:
         im = PIL.ImageGrab.grab()
         im = im.crop((rect[0]+offset[0], rect[1]+offset[1],
                       rect[2]+offset[0], rect[3]+offset[1])).convert('L')
+        self.last_two_screens.append(np.array(im.crop((200, 7, 232, 23))))
         im.save(f"./screenshots/screenshots{self.i}.png")
         self.i = (self.i + 1) % 1000
         return np.array(im)
@@ -91,13 +108,13 @@ class IO:
         resized_screenshot = croped_screenshot.resize(
             frame_size, Image.BICUBIC)
         normalized_screenshot = np.asarray(
-            resized_screenshot).reshape(50, 75) / 255.0
+            resized_screenshot).reshape(100, 150) / 255.0
         return normalized_screenshot
 
     def get_stacked_frames(self, screenshot, is_new_episode):
         # Preprocess frame
         frame = self.process_screenshot(screenshot)
-        
+
         if is_new_episode:
             # Clear our stacked_frames
             self.stacked_frames = deque(
@@ -125,9 +142,21 @@ class IO:
         res2 = cv2.matchTemplate(input_data, self.blackout, method)
         threshold1 = 0.7
         threshold2 = 0.7
+        threshold3 = 0.1
+
+        diff = image_difference(
+            self.last_two_screens[0], self.last_two_screens[1])
+
+        if diff < threshold3 and not detect_1000(input_data):
+            self.occurence_last_two_screens_same += 1
+            if self.occurence_last_two_screens_same >= max_occurence_last_two_screens_same:
+                print("time has stopped for a while, mario probably died", diff)
+                return False, True
+        else:
+            self.occurence_last_two_screens_same = 0
 
         min_val, max_val1, min_loc, max_loc = cv2.minMaxLoc(res1)
         min_val, max_val2, min_loc, max_loc = cv2.minMaxLoc(res2)
 
-        print("#### dying", max_val1, max_val2)
-        return max_val1 > threshold1 or max_val2 > threshold2
+        print("#### dying", max_val1, max_val2, diff)
+        return max_val1 > threshold1 or max_val2 > threshold2, False

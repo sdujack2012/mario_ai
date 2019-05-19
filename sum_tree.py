@@ -2,6 +2,8 @@ import numpy
 
 # SumTree
 # a binary tree data structure where the parent’s value is the sum of its children
+
+
 class SumTree:
     write = 0
 
@@ -39,7 +41,7 @@ class SumTree:
     # store priority and sample
     def add(self, p, data):
         idx = self.write + self.capacity - 1
-
+        entry_to_overwrite = self.data[self.write]
         self.data[self.write] = data
         self.update(idx, p)
 
@@ -49,8 +51,9 @@ class SumTree:
 
         if self.n_entries < self.capacity:
             self.n_entries += 1
-
+        return entry_to_overwrite
     # update priority
+
     def update(self, idx, p):
         change = p - self.tree[idx]
 
@@ -61,5 +64,4 @@ class SumTree:
     def get(self, s):
         idx = self._retrieve(0, s)
         dataIdx = idx - self.capacity + 1
-
         return (idx, self.tree[idx], self.data[dataIdx])

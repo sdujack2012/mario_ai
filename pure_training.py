@@ -34,15 +34,16 @@ maxlen = 1000
 def main():
     esplison = 0.6
     memorydb_instance = MemoryDB('localhost', 'mario-ai', 'replay-memory')
-    agent_instance = Agent((50, 75, 4), False)
+    agent_instance = Agent((100, 150, 4), False)
     i = 1
 
     while True:
         print(f"experiences size: {memorydb_instance.get_experiences_size()}")
-        sampled_experiences, b_idx, b_ISWeights = memorydb_instance.sample(sample_size)
+        sampled_experiences, b_idx, b_ISWeights = memorydb_instance.sample(
+            sample_size)
         print("sampled_experiences: ", len(sampled_experiences))
         errors = train_with_experience(
-            agent_instance, sampled_experiences, b_ISWeights, sample_size, epoch, discount)
+            agent_instance, sampled_experiences, b_ISWeights, epoch, discount)
 
         agent_instance.save_model()
         memorydb_instance.update_batch(b_idx, errors, sampled_experiences)

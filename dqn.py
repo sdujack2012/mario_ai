@@ -17,54 +17,48 @@ class DQN:
 
         self.input = image_input = tf.keras.layers.Input(shape=input_shape)
         self.conv1 = image_output = tf.keras.layers.Conv2D(
-            filters=32, kernel_size=(8, 8), strides=4, activation='relu', input_shape=input_shape)(image_input)
-        image_output = tf.keras.layers.Dropout(0.25)(image_output)
+            filters=32, padding='valid', kernel_size=(8, 8), strides=4, input_shape=input_shape)(image_input)
+        image_output = keras.layers.BatchNormalization(trainable=True)(image_output)
+        image_output = keras.layers.Activation("relu")(image_output)
 
         self.conv2 = image_output = tf.keras.layers.Conv2D(
-            filters=64, kernel_size=(4, 4), strides=2, activation='relu')(image_output)
-        image_output = tf.keras.layers.Dropout(0.25)(image_output)
+            filters=64, padding='valid',kernel_size=(4, 4), strides=2)(image_output)
+        image_output = keras.layers.BatchNormalization(trainable=True)(image_output)
+        image_output = keras.layers.Activation("relu")(image_output)
 
         self.conv3 = image_output = tf.keras.layers.Conv2D(
-            filters=128, kernel_size=(3, 3), strides=1, activation='relu')(image_output)
-        image_output = tf.keras.layers.Dropout(0.25)(image_output)
+            filters=128, padding='valid',kernel_size=(3, 3), strides=1)(image_output)
+        image_output = keras.layers.BatchNormalization(trainable=True)(image_output)
+        image_output = keras.layers.Activation("relu")(image_output)
 
         image_output = tf.keras.layers.Flatten()(image_output)
 
-        device_input = tf.keras.layers.Input(shape=(4, ))
+        image_output = tf.keras.layers.Dense(512)(image_output)
+        image_output = keras.layers.BatchNormalization(trainable=True)(image_output)
+        image_output = keras.layers.Activation("relu")(image_output)
+        
+        device_input = tf.keras.layers.Input(shape=(5, ))
+        device_output = tf.keras.layers.Dense(256)(device_input)
+        device_output = keras.layers.BatchNormalization(trainable=True)(device_output)
+        device_output = keras.layers.Activation("relu")(device_output)
 
-        device_output_advantage = tf.keras.layers.Dense(
-            64, activation='relu')(device_input)
+        merged_output = tf.keras.layers.concatenate(
+            [image_output, device_output])
 
-        image_output_advantage = tf.keras.layers.Dense(
-            512, activation='relu')(image_output)
-
-        merged_output_advantage = tf.keras.layers.concatenate(
-            [image_output_advantage, device_output_advantage])
-
-        merged_output_advantage = tf.keras.layers.Dense(4, kernel_initializer='zeros',
-                                                        bias_initializer='zeros')(merged_output_advantage)
+        output_advantage = tf.keras.layers.Dense(5, kernel_initializer='random_uniform',
+                                                        bias_initializer='random_uniform')(merged_output)  
         final_output_advantage = tf.keras.layers.Lambda(
-            lambda x: x - K.mean(x, axis=1, keepdims=True))(merged_output_advantage)
+            lambda x: x - K.mean(x, axis=1, keepdims=True))(output_advantage)
 
-        device_output_value = tf.keras.layers.Dense(
-            64, activation='relu')(device_input)
+        final_output_value = tf.keras.layers.Dense(1, kernel_initializer='random_uniform',
+                                                   bias_initializer='random_uniform')(merged_output)
 
-        image_output_value = tf.keras.layers.Dense(
-            512, activation='relu')(image_output)
+        final_output = tf.keras.layers.Add()([final_output_advantage, final_output_value])
 
-        merged_output_value = tf.keras.layers.concatenate(
-            [image_output_value, device_output_value])
+        model = tf.keras.Model(inputs=[image_input, device_input], outputs=final_output)
 
-        final_output_value = tf.keras.layers.Dense(1, kernel_initializer='zeros',
-                                                   bias_initializer='zeros')(merged_output_value)
-
-        final_output = tf.keras.layers.Add()(
-            [final_output_advantage, final_output_value])
-
-        model = tf.keras.Model(
-            inputs=[image_input, device_input], outputs=final_output)
         model.summary()
-        model.compile(loss='mse', optimizer=keras.optimizers.Adam(lr=0.001))
+        model.compile(loss='mse', metrics=['accuracy'], optimizer=keras.optimizers.Adam(lr=0.00025))
 
         if continueTraining == True:
             model.load_weights(f'./{self.name}.hdf5')
@@ -81,7 +75,9 @@ class DQN:
         self.model.save(f"./{name if name != None else self.name}.hdf5")
 
     def copy_model(self, cnn2):
-        cnn2.save_model("./temp_XX_XX_XX")
-        self.model.load_weights('./temp_XX_XX_XX.hdf5')
+        self.model.set_weights(cnn2.get_weights())
+    
+    def get_weights(self):
+        return self.model.get_weights()
 
 # # Take a look at the model summary
