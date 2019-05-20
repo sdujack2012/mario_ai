@@ -27,7 +27,7 @@ sample_size = 300
 epoch = 1
 
 training_before_update_target = 100
-max_steps = 900
+max_steps = 9000
 
 def main():
     esplison = 0.7
@@ -36,7 +36,7 @@ def main():
     episode = 0
     io_instance = IO("FCEUX 2.2.3: mario")
     memorydb_instance = MemoryDB('localhost', 'mario-ai', 'replay-memory')
-    agent_instance = Agent((100, 150, 4), False)
+    agent_instance = Agent((100, 150, 4), True)
 
     i = 1
     while True:
@@ -55,9 +55,9 @@ def main():
         previous_image_state = io_instance.get_stacked_frames(
             previous_screenshot, True)
 
-        previous_middle_output = None
         while is_termnial != True and steps < max_steps:
             steps += 1
+            print("steps: ",steps)
             experience = {}
             experience["terminal"] = False
             experience["screenshot"] = previous_screenshot
@@ -68,7 +68,7 @@ def main():
             
             if dice >= esplison:
             #if True:
-                reward, mddile_out = agent_instance.model_predict([experience["image_state"].reshape(
+                reward = agent_instance.model_predict([experience["image_state"].reshape(
                     1, 100, 150, 4), experience["device_state"].reshape(1, 5)])
 
                 # reward = output[0]

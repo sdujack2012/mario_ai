@@ -26,7 +26,8 @@ def train_with_experience(agent_instance, sampled_experiences, sample_weights, e
     train_x_image_state_after = [experience["next_image_state"]
                                 for experience in sampled_experiences]
     train_x_device_state_after = [
-        experience["next_device_state"] for experience in sampled_experiences]
+        experience["next_device_state"] for 
+        experience in sampled_experiences]
 
     predicted_next_action_indexes = np.argmax(agent_instance.model_predict(
         [train_x_image_state_after, train_x_device_state_after]), axis=1)
@@ -55,10 +56,10 @@ def train_with_experience(agent_instance, sampled_experiences, sample_weights, e
     for j in range(len(sampled_experiences)):
         experience = sampled_experiences[j]
         model_q_value_after = model_q_values_after[j]
-        target_q_value = target_q_values[j]
+        model_q_value = model_q_values[j]
         action_index = experience["action_index"]
         error = np.abs(
-            model_q_value_after[action_index] - target_q_value[action_index])
+            model_q_value_after[action_index] - model_q_value[action_index])
         errors.append(error)
 
     return errors

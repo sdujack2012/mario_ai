@@ -21,6 +21,7 @@ class Agent:
 
         def save_model(self):
             self.model.save_model()
+            self.model.save_model("./backup")
 
         def sync_target(self):
             self.target.copy_model(self.model)

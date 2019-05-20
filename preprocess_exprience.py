@@ -9,9 +9,9 @@ from multiprocessing.dummy import Pool as ThreadPool
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files (x86)\Tesseract-OCR\tesseract'
 
-death_penalty = -0.5
-do_nothing_penalty = -0.001
-progress_rewards = 0.002
+death_penalty = -1
+do_nothing_penalty = -0.01
+progress_rewards = 0.02
 
 point100 = np.array(cv2.imread('./resources/point100.png', 0))
 point200 = np.array(cv2.imread('./resources/point200.png', 0))
@@ -79,11 +79,11 @@ def calculate_reward(input_data1, input_data2):
 
     score = 0
     if(detect_1000_reward(input_data1, input_data2)):
-        score = 0.01
+        score = 0.1
     elif(detect_200_reward(input_data1, input_data2)):
-        score = 0.01
+        score = 0.1
     elif(detect_100_reward(input_data1, input_data2)):
-        score = 0.01
+        score = 0.1
 
     method = eval('cv2.TM_CCOEFF_NORMED')
     res = cv2.matchTemplate(input_data1, input_data2[24:, 0:80], method)
@@ -91,7 +91,6 @@ def calculate_reward(input_data1, input_data2):
     final_reward = score + max_loc[0] * progress_rewards
     final_reward = final_reward if final_reward > 0 else do_nothing_penalty
     return final_reward
-
 
 def calculate_reward_array(experience):
     if experience["terminal"] == True:
@@ -105,7 +104,7 @@ def calculate_reward_array(experience):
 
 
 def calculate_rewards(experiences):
-    pool = ThreadPool(10)
+    pool = ThreadPool(20)
     rewards = pool.map(calculate_reward_array, experiences)
     for i in range(len(experiences)):
         experiences[i]["actual_reward"] = rewards[i]
