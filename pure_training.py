@@ -14,29 +14,30 @@ from collections import deque
 import random
 import _pickle
 import os
-
+from PIL import Image
 from memory_db import MemoryDB
-from nes_io import IO, max_occurence_last_two_screens_same
+from nes_io import IO
 from agent import Agent
 from preprocess_exprience import calculate_rewards
 from train_model import train_with_experience
 
-discount = 0.8
+discount = 0.90
 
-sample_size = 300
+sample_size = 1000
 epoch = 1
 
 training_before_update_target = 100
-max_steps = 900
+max_steps = 9000
+
 
 def main():
-    memorydb_instance = MemoryDB('localhost', 'mario-ai', 'replay-memory')
-    agent_instance = Agent((120, 120, 4), True)
+    memorydb_instance = MemoryDB('localhost', 'bee-ai', 'replay-memory')
+    agent_instance = Agent((120, 150, 4), True)
 
     i = 1
     while True:
         print("experiences size: ", memorydb_instance.get_experiences_size())
-    
+        
         sampled_experiences, b_idx, b_ISWeights = memorydb_instance.sample(
             sample_size)
         print("sampled_experiences: ", len(sampled_experiences))
@@ -50,6 +51,7 @@ def main():
         if i % training_before_update_target == 0:
             agent_instance.sync_target()
         i += 1
+
 
 if __name__ == "__main__":
     main()

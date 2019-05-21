@@ -73,7 +73,7 @@ class IO:
                       rect[2]+offset[0], rect[3]+offset[1])).convert('L')
         if isSavingScreenshot:
             currentDT = datetime.datetime.now()
-            im.sshhhssshsave(f"./screenshots/screenshots_{currentDT.strftime('%H%M%S')}.png")
+            im.save(f"./screenshots/screenshots_{currentDT.strftime('%H%M%S')}.png")
 
         return np.array(im)
 
@@ -86,8 +86,6 @@ class IO:
 
     def get_stacked_frames(self, screenshot, is_new_episode):
         frame = self.process_screenshot(screenshot)
-        image = Image.fromarray(frame * 255)
-        image.show()
         if is_new_episode:
             self.stacked_frames = deque(
                 [np.zeros(frame_size) for i in range(stack_size)], maxlen=stack_size)

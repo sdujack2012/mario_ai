@@ -27,8 +27,7 @@ def train_with_experience(agent_instance, sampled_experiences, sample_weights, e
     predicted_next_values = agent_instance.model_predict(
         train_x_image_state_after)
     predicted_next_action_indexes = np.argmax(predicted_next_values, axis=1)
-    print("predicted_next_values", predicted_next_values)
-    print("predicted_next_action_indexes", predicted_next_action_indexes)
+    
     target_q_values = agent_instance.target_predict(
         train_x_image_state_after)
 
@@ -40,7 +39,7 @@ def train_with_experience(agent_instance, sampled_experiences, sample_weights, e
         action_index = experience["action_index"]
         model_q_value[action_index] = experience["actual_reward"] + (discount *
                                                                      target_q_value[predicted_next_action_index] if experience["terminal"] != True else 0)
-        print("action index", action_index, "actual reward",
+        print("action index", action_index, "reward", model_q_value, "actual reward",
               experience["actual_reward"], "target reward", model_q_value[action_index])
 
     agent_instance.train_model(

@@ -14,16 +14,16 @@ from collections import deque
 import random
 import _pickle
 import os
-
+from PIL import Image
 from memory_db import MemoryDB
 from nes_io import IO
 from agent import Agent
 from preprocess_exprience import calculate_rewards
 from train_model import train_with_experience
 
-discount = 0.98
+discount = 0.90
 
-sample_size = 60
+sample_size = 400
 epoch = 1
 
 training_before_update_target = 100
@@ -37,7 +37,7 @@ def main():
     episode = 0
     io_instance = IO("FCEUX 2.2.3: bee")
     memorydb_instance = MemoryDB('localhost', 'bee-ai', 'replay-memory1')
-    agent_instance = Agent((120, 150, 4), False)
+    agent_instance = Agent((120, 150, 4), True)
 
     i = 1
     while True:
@@ -64,12 +64,9 @@ def main():
             experience["image_state"] = previous_image_state
             dice = random.uniform(0.0, 1.0)
             action_index = 0
-
-            if dice >= esplison:
-            #if True:
-                reward = agent_instance.model_predict(experience["image_state"].reshape(
-                    1, 120, 150, 4))
-
+            #if dice >= esplison:
+            if True:
+                reward = agent_instance.model_predict(np.array([experience["image_state"]]))
                 print("###reward: ", reward)
                 action_index = np.argmax(reward).item()
                 print("Model selected action and rewards:", action_index,
