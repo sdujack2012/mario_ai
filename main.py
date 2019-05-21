@@ -16,27 +16,28 @@ import _pickle
 import os
 
 from memory_db import MemoryDB
-from nes_io import IO, max_occurence_last_two_screens_same
+from nes_io import IO
 from agent import Agent
 from preprocess_exprience import calculate_rewards
 from train_model import train_with_experience
 
-discount = 0.8
+discount = 0.98
 
-sample_size = 300
+sample_size = 60
 epoch = 1
 
 training_before_update_target = 100
 max_steps = 9000
+
 
 def main():
     esplison = 0.7
     esplison_decay = 0.001
 
     episode = 0
-    io_instance = IO("FCEUX 2.2.3: mario")
-    memorydb_instance = MemoryDB('localhost', 'mario-ai', 'replay-memory')
-    agent_instance = Agent((100, 150, 4), True)
+    io_instance = IO("FCEUX 2.2.3: bee")
+    memorydb_instance = MemoryDB('localhost', 'bee-ai', 'replay-memory1')
+    agent_instance = Agent((120, 150, 4), False)
 
     i = 1
     while True:
@@ -51,35 +52,30 @@ def main():
         is_termnial = False
 
         previous_screenshot = io_instance.get_screenshot()
-        previous_device_state = io_instance.get_device_state()
         previous_image_state = io_instance.get_stacked_frames(
             previous_screenshot, True)
 
-        while is_termnial != True and steps < max_steps:
+        while is_termnial != True:
             steps += 1
-            print("steps: ",steps)
+            print("steps: ", steps)
             experience = {}
             experience["terminal"] = False
             experience["screenshot"] = previous_screenshot
             experience["image_state"] = previous_image_state
-            experience["device_state"] = previous_device_state
             dice = random.uniform(0.0, 1.0)
             action_index = 0
-            
+
             if dice >= esplison:
             #if True:
-                reward = agent_instance.model_predict([experience["image_state"].reshape(
-                    1, 100, 150, 4), experience["device_state"].reshape(1, 5)])
+                reward = agent_instance.model_predict(experience["image_state"].reshape(
+                    1, 120, 150, 4))
 
-                # reward = output[0]
-                # print("###value: ", output[2])
-                # print("###advantage: ", output[1])
                 print("###reward: ", reward)
                 action_index = np.argmax(reward).item()
                 print("Model selected action and rewards:", action_index,
                       io_instance.action_mapping_name[action_index])
             else:
-                action_index = random.randint(0, 4)
+                action_index = random.randint(0, 2)
 
                 print("Random selected action:", action_index,
                       io_instance.action_mapping_name[action_index])
@@ -90,26 +86,17 @@ def main():
             experience["next_screenshot"] = previous_screenshot = io_instance.get_screenshot()
             experience["next_image_state"] = previous_image_state = io_instance.get_stacked_frames(
                 previous_screenshot, False)
-            experience["next_device_state"] = previous_device_state = io_instance.get_device_state()
+
             experience_bacth.append(experience)
 
-            died, time_stopped = io_instance.is_termnial(
-                experience["next_screenshot"])
-
-            if died:
+            if io_instance.is_termnial(experience["next_screenshot"]):
                 experience["terminal"] = True
-                is_termnial = True
-            elif time_stopped:
-                experience_bacth = experience_bacth[0:len(
-                    experience_bacth)-max_occurence_last_two_screens_same]
-                experience_bacth[len(experience_bacth)-1]["terminal"] = True
                 is_termnial = True
 
         calculate_rewards(experience_bacth)
         memorydb_instance.add_batch(experience_bacth)
 
         print("New Experiences Added")
-
 
         sampled_experiences, b_idx, b_ISWeights = memorydb_instance.sample(
             sample_size)
@@ -124,6 +111,7 @@ def main():
         if i % training_before_update_target == 0:
             agent_instance.sync_target()
         i += 1
+
 
 if __name__ == "__main__":
     main()

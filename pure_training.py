@@ -31,7 +31,7 @@ max_steps = 900
 
 def main():
     memorydb_instance = MemoryDB('localhost', 'mario-ai', 'replay-memory')
-    agent_instance = Agent((100, 150, 4), True)
+    agent_instance = Agent((120, 120, 4), True)
 
     i = 1
     while True:

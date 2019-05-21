@@ -16,24 +16,21 @@ import _pickle
 
 
 def train_with_experience(agent_instance, sampled_experiences, sample_weights, epoch, discount):
-    train_x_image_state_before = [experience["image_state"]
-                           for experience in sampled_experiences]
-    train_x_device_state_before = [experience["device_state"]
-                                   for experience in sampled_experiences]
-    model_q_values = agent_instance.model_predict(
-        [train_x_image_state_before, train_x_device_state_before])
+    train_x_image_state_before = np.array( [experience["image_state"]
+                           for experience in sampled_experiences])
 
-    train_x_image_state_after = [experience["next_image_state"]
-                                for experience in sampled_experiences]
-    train_x_device_state_after = [
-        experience["next_device_state"] for 
-        experience in sampled_experiences]
+    model_q_values = agent_instance.model_predict(train_x_image_state_before)
 
-    predicted_next_action_indexes = np.argmax(agent_instance.model_predict(
-        [train_x_image_state_after, train_x_device_state_after]), axis=1)
+    train_x_image_state_after = np.array( [experience["next_image_state"]
+                                for experience in sampled_experiences])
 
+    predicted_next_values = agent_instance.model_predict(
+        train_x_image_state_after)
+    predicted_next_action_indexes = np.argmax(predicted_next_values, axis=1)
+    print("predicted_next_values", predicted_next_values)
+    print("predicted_next_action_indexes", predicted_next_action_indexes)
     target_q_values = agent_instance.target_predict(
-        [train_x_image_state_after, train_x_device_state_after])
+        train_x_image_state_after)
 
     for j in range(len(sampled_experiences)):
         experience = sampled_experiences[j]
@@ -47,10 +44,10 @@ def train_with_experience(agent_instance, sampled_experiences, sample_weights, e
               experience["actual_reward"], "target reward", model_q_value[action_index])
 
     agent_instance.train_model(
-        [train_x_image_state_before, train_x_device_state_before], model_q_values, sample_weights, epoch)
+        train_x_image_state_before, model_q_values, sample_weights, epoch)
 
     model_q_values_after = agent_instance.model_predict(
-        [train_x_image_state_before, train_x_device_state_before])
+        train_x_image_state_before)
 
     errors = []
     for j in range(len(sampled_experiences)):

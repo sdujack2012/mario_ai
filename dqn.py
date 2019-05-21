@@ -41,25 +41,16 @@ class DQN:
             trainable=True)(image_output)
         image_output = keras.layers.Activation("elu")(image_output)
 
-        device_input = tf.keras.layers.Input(shape=(5, ))
-        device_output = tf.keras.layers.Dense(256)(device_input)
-        device_output = keras.layers.BatchNormalization(
-            trainable=True)(device_output)
-        device_output = keras.layers.Activation("elu")(device_output)
-
-        merged_output = tf.keras.layers.concatenate(
-            [image_output, device_output])
-
-        output_advantage = tf.keras.layers.Dense(512)(merged_output)
+        output_advantage = tf.keras.layers.Dense(512)(image_output)
         output_advantage = keras.layers.BatchNormalization(
             trainable=True)(output_advantage)
         output_advantage = keras.layers.Activation("elu")(output_advantage)
-        output_advantage = tf.keras.layers.Dense(5, kernel_initializer=keras.initializers.glorot_uniform(),
+        output_advantage = tf.keras.layers.Dense(3, kernel_initializer=keras.initializers.glorot_uniform(),
                                                  bias_initializer=keras.initializers.glorot_uniform())(output_advantage)
         final_output_advantage = tf.keras.layers.Lambda(
             lambda x: x - K.mean(x, axis=1, keepdims=True))(output_advantage)
 
-        output_value = tf.keras.layers.Dense(512)(merged_output)
+        output_value = tf.keras.layers.Dense(512)(image_output)
         output_value = keras.layers.BatchNormalization(
             trainable=True)(output_value)
         output_value = keras.layers.Activation("elu")(output_value)
@@ -70,7 +61,7 @@ class DQN:
             [final_output_advantage, final_output_value])
 
         model = tf.keras.Model(
-            inputs=[image_input, device_input], outputs=final_output)
+            inputs=image_input, outputs=final_output)
 
         model.summary()
         model.compile(loss='mse', metrics=[
